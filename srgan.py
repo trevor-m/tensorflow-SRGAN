@@ -5,12 +5,15 @@ class SRGanGenerator:
   
   Reference: https://arxiv.org/pdf/1609.04802.pdf
   """
-  def __init__(self, discriminator, learning_rate=1e-4, num_blocks=16, num_upsamples=2):
+  def __init__(self, discriminator, content_loss='mse', use_gan=True, learning_rate=1e-4, num_blocks=16, num_upsamples=2):
     self.learning_rate = learning_rate
     self.num_blocks = num_blocks
     self.num_upsamples = num_upsamples
-    self.discriminator = discriminator
-    #self.vgg
+    self.use_gan = use_gan
+    if content_loss not in ['mse', 'vgg22', 'vgg54']:
+      print('Invalid content loss function. Must be \'mse\', \'vgg22\', or \'vgg54\'')
+      exit()
+    self.content_loss = content_loss
 
   def ResidualBlock(self, x, kernel_size, filters, strides=1):
     """Residual block a la ResNet"""
@@ -52,28 +55,31 @@ class SRGanGenerator:
       x = tf.layers.conv2d(x, kernel_size=9, filters=3, strides=1, padding='same', name='forward')
       return x
 
-  def _content_loss(self, y, y_pred, name='content_loss'):
-    """MSE"""
-    # TODO VGG-based content loss
-    return tf.reduce_mean(tf.square(y - y_pred), name=name)
+  def _content_loss(self, y, y_pred):
+    """MSE, VGG22, or VGG54"""
+    if self.content_loss == 'mse':
+      return tf.reduce_mean(tf.square(y - y_pred), name='content_loss')
+    if self.content_loss == 'vgg22':
+      # TODO
+      return 0
+    if self.content_loss == 'vgg54':
+      # TODO
+      return 0
 
-  def _adversarial_loss(self, y_pred, name='adversarial_loss'):
+  def _adversarial_loss(self, y_pred):
     """GAN"""
-    if not self.discriminator:
-      print('Please supply a discriminator network when initializing model.')
-      exit()
-    
-    y_discrim = self.discriminator.forward(y_pred, reuse=True)
-    return tf.reduce_sum(-tf.log(y_discrim), name=name)
+    y_discrim = self.discriminator.forward(y_pred, reuse=False)
+    return tf.reduce_sum(-tf.log(y_discrim), name='adversarial_loss')
 
-  def _perceptual_loss(self, y, y_pred, name='loss'):
+  def _perceptual_loss(self, y, y_pred):
     """Weighted sum of content and adversarial loss"""
-    return tf.add(self._content_loss(y, y_pred), 1e-3*self._adversarial_loss(y), name=name)
+    return tf.add(self._content_loss(y, y_pred), 1e-3*self._adversarial_loss(y), name='loss')
 
-
-  def loss_function(self, y_pred, y):
+  def loss_function(self, y, y_pred):
     """Loss function"""
-    return self._perceptual_loss(y, y_pred, name='loss')
+    if self.use_gan:
+      return self._perceptual_loss(y, y_pred, name='loss')
+    return self._content_loss(y, y_pred)
   
   def optimize(self, loss):
     # TODO limit variables trained to only generator
@@ -116,8 +122,11 @@ class SRGanDiscriminator:
       x = tf.sigmoid(x, name='forward')
       return x
 
-  def loss_function(self, y, y_pred):
-    return 0
+  def loss_function(self, y_real_pred, y_fake_pred):
+    loss_real = tf.log(y_real_pred)
+    loss_fake = tf.log(1-y_fake_pred)
+    # TODO: alpha
+    return tf.reduce_mean(loss_real + loss_fake)
 
   def optimize(self, loss):
     # TODO limit variables trained
