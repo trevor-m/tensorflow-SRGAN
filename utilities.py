@@ -69,7 +69,7 @@ def build_inputs(args, sess):
   eval_data = create_tensor_from_files(eval_filenames[:5], sess, img_size=args.image_size_test)
 
   # Create input pipelines
-  get_train_batch = build_input_pipeline(train_filenames, batch_size=args.batch_size, img_size=args.image_size_train, random_crop=False)
+  get_train_batch = build_input_pipeline(train_filenames, batch_size=args.batch_size, img_size=args.image_size_train, random_crop=True)
   get_val_batch = build_input_pipeline(val_filenames, batch_size=args.batch_size, img_size=args.image_size_train)
   get_eval_batch = build_input_pipeline(eval_filenames, batch_size=args.batch_size, img_size=args.image_size_train)
   return get_train_batch, get_val_batch, get_eval_batch, val_data, eval_data
@@ -78,12 +78,12 @@ def downsample(image, factor):
   """Downsampling function which matches photoshop"""
   sigma = (factor - 1.0) / 2
   image = skimage.filters.gaussian(image, sigma, multichannel=True, preserve_range=True)
-  return skimage.transform.resize(image, (image.shape[0]//factor, image.shape[1]//factor, 3), order=1, preserve_range=True)
+  return skimage.transform.resize(image, (image.shape[0]//factor, image.shape[1]//factor, 3), order=1, preserve_range=True, mode='constant')
 
 def downsample_batch(batch, factor):
   downsampled = np.zeros((batch.shape[0], batch.shape[1]//factor, batch.shape[2]//factor, 3))
   for i in range(batch.shape[0]):
-    downsampled[i,:,:,:] = downsample(batch[0,:,:,:], factor)
+    downsampled[i,:,:,:] = downsample(batch[i,:,:,:], factor)
   return downsampled
 
 def build_log_dir(args, arguments):
@@ -122,7 +122,7 @@ def build_log_dir(args, arguments):
 
 def preprocess(lr, hr):
   """Preprocess lr and hr batch"""
-  lr = lr
+  #lr = lr
   hr = hr * 2.0 - 1.0
   return lr, hr
 
