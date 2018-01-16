@@ -122,3 +122,44 @@ def preprocess(lr, hr):
   lr = lr
   hr = hr * 2.0 - 1.0
   return lr, hr
+
+def save_image(path, data, highres=False):
+  # transform from [-1, 1] to [0, 1]
+  if highres:
+    data = (data + 1.0) * 0.5
+  # transform from [0, 1] to [0, 255], clip, and convert to uint8
+  data = np.clip(data * 255.0, 0.0, 255.0).astype(np.uint8)
+  misc.toimage(data, cmin=0, cmax=255).save(path)
+
+def evaluate_model(loss_function, get_batch, sess, num_images, batch_size):
+  """Tests the model over all num_images using input tensor get_batch"""
+  loss = 0
+  total = 0
+  for i in range(int(math.ceil(num_images/batch_size))):
+    batch_hr = sess.run(get_batch)
+    batch_lr = downsample_batch(batch_hr, factor=4)
+    batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
+    loss += sess.run(loss_function, feed_dict={training: False, g_x: batch_lr, g_y: batch_hr})
+    total += 1
+  loss = loss / total
+  return loss
+
+def test_examples(batch_hr, g_y_pred, epoch, log_path, prefix, num=5):
+  """Test the first num(5) images and save the outputs"""
+  # make feed dict with downsampled images
+  batch_lr = downsample_batch(batch_hr, factor=4)
+  batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
+
+  # run everything through network
+  output = sess.run(g_y_pred, feed_dict={training: False, g_x: batch_lr, g_y: batch_hr})
+  
+  # iterate over all 5 examples
+  for i in range(output.shape[0]):
+    # save full resolution input/output
+    file_name = os.path.join(log_path, '%s_%d' % (prefix, i), '%d_in.png' % epoch)
+    save_image(file_name, batch_hr[i, :, :, :], highres=True)
+    file_name = os.path.join(log_path, '%s_%d' % (prefix, i), '%d_out.png' % epoch)
+    save_image(file_name, output[i, :, :, :], highres=True)
+    # save downsampled
+    file_name = os.path.join(log_path, '%s_%d' % (prefix, i), '%d_down.png' % epoch)
+    save_image(file_name, batch_lr[i, :, :, :])

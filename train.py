@@ -5,7 +5,7 @@ import argparse
 import srgan
 import os
 import sys
-from utilities import build_inputs, downsample_batch, build_log_dir, preprocess
+from utilities import build_inputs, downsample_batch, build_log_dir, preprocess, evaluate_model, test_examples
 
 def main():
   parser = argparse.ArgumentParser()
@@ -69,7 +69,14 @@ def main():
     # Train
     while True:
       if iteration % args.log_freq == 0:
-        # TODO Test
+        val_error = evaluate_model(g_loss, get_val_batch, sess, args.num_test, args.batch_size)
+        eval_error = evaluate_model(g_loss, get_eval_batch, sess, args.num_test, args.batch_size)
+        test_examples(val_data, g_y_pred, iteration, log_path, 'val')
+        test_examples(val_data, g_y_pred, iteration, log_path, 'eval')
+        # Log error
+        print('[%d] Test: %.7f, Train: %.7f' % (iteration, val_error, eval_error))
+        with open(log_path + '/loss.csv', 'a') as f:
+          f.write('%d, %.15f, %.15f\n' % (iteration, val_error, eval_error))
         # Save checkpoint
         saver.save(sess, log_path, global_step=iteration, write_meta_graph=False)
 
