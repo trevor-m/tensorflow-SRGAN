@@ -3,6 +3,9 @@ import numpy as np
 import pickle
 import skimage.transform
 import skimage.filters
+import datetime
+import os
+import shutil
 
 def process_individual_image(filename_queue, img_size, random_crop=False):
   """Individual loading & processing for each image"""
@@ -80,10 +83,10 @@ def downsample_batch(batch, factor):
     downsampled[i,:,:,:] = downsample(batch[0,:,:,:], factor)
   return downsampled
 
-def build_log_dir(name, overfit, arguments):
+def build_log_dir(args, arguments):
   """Set up a timestamped directory for results and logs for this training session"""
-  if name:
-    log_path = name #(name + '_') if name else ''
+  if args.name:
+    log_path = args.name #(name + '_') if name else ''
   else:
     log_path = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
   log_path = os.path.join('results', log_path)
@@ -91,25 +94,26 @@ def build_log_dir(name, overfit, arguments):
     os.makedirs(log_path)
   print('Logging results for this session in folder "%s".' % log_path)
   # Output csv header
-  with open(log_path + '/loss.txt', 'a') as f:
-    f.write('epoch, val_error_high, eval_error_high, val_error_low, eval_error_low, train_time, test_time\n')
+  with open(log_path + '/loss.csv', 'a') as f:
+    f.write('iteration, val_error, eval_error\n')
   # Copy this code to folder
-  shutil.copy2('superres.py', os.path.join(log_path, 'superres.py'))
+  shutil.copy2('srgan.py', os.path.join(log_path, 'srgan.py'))
+  shutil.copy2('train.py', os.path.join(log_path, 'train.py'))
+  shutil.copy2('utilities.py', os.path.join(log_path, 'utilities.py'))
   # Write command line arguments to file
   with open(log_path + '/args.txt', 'w+') as f:
     f.write(' '.join(arguments))
   # Make directory for each visual example
   num = 5
-  if overfit:
+  if args.overfit:
     num = 1
-  for model_type in ["high", "low"]:
-    for i in range(num):
-      full_path = os.path.join(log_path, model_type+'_eval_'+str(i))
-      if not os.path.exists(full_path):
-        os.makedirs(full_path)
-      full_path = os.path.join(log_path, model_type+'_val_'+str(i))
-      if not os.path.exists(full_path):
-        os.makedirs(full_path)
+  for i in range(num):
+    full_path = os.path.join(log_path,'eval_'+str(i))
+    if not os.path.exists(full_path):
+      os.makedirs(full_path)
+    full_path = os.path.join(log_path, 'val_'+str(i))
+    if not os.path.exists(full_path):
+      os.makedirs(full_path)
   
   return log_path
 

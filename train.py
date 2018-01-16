@@ -4,16 +4,19 @@ import numpy as np
 import argparse
 import srgan
 import os
+import sys
 from utilities import build_inputs, downsample_batch, build_log_dir, preprocess
 
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--load', type=str, help='Checkpoint to load all weights from.')
-  parser.add_argument('--name', type=str, help='Name of experiment')
+  parser.add_argument('--name', type=str, help='Name of experiment.')
+  parser.add_argument('--overfit', action='store_true', help='Overfit to a single image.')
   parser.add_argument('--batch-size', type=int, default=20, help='Mini-batch size.')
+  parser.add_argument('--log-freq', type=int, default=1000, help='How many training iterations between testing/checkpoints.')
   parser.add_argument('--learning-rate', type=float, default=1e-4, help='Learning rate for Adam.')
-  parser.add_argument('--content-loss', type=str, choices=['mse', 'vgg22', 'vgg54'], 'Metric to use for content loss.')
-  parser.add_argument('--use-gan', action='store_true', 'Add adversarial loss term to generator and trains discriminator.')
+  parser.add_argument('--content-loss', type=str, default='mse', choices=['mse', 'vgg22', 'vgg54'], help='Metric to use for content loss.')
+  parser.add_argument('--use-gan', action='store_true', help='Add adversarial loss term to generator and trains discriminator.')
   parser.add_argument('--image-size-train', type=int, default=96, help='Dimensions of training images.')
   parser.add_argument('--image-size-test', type=int, default=96, help='Dimensions of testing images.')
   parser.add_argument('--num-test', type=int, default=1000, help='Number of images to test on.')
@@ -22,7 +25,7 @@ def main():
   # Set up models
   training = tf.placeholder(tf.bool)
   discriminator = srgan.SRGanDiscriminator()
-  generator = srgan.SRGanGenerator(discriminator=discriminator, learning_rate=args.learning_rate, content_loss=args.content_less, use_gan=args.use_gan)
+  generator = srgan.SRGanGenerator(discriminator=discriminator, learning_rate=args.learning_rate, content_loss=args.content_loss, use_gan=args.use_gan)
   # Generator
   g_x = tf.placeholder(tf.float32, [None, None, None, 3], name='input_lowres')
   g_y = tf.placeholder(tf.float32, [None, None, None, 3], name='input_highres')
@@ -30,19 +33,23 @@ def main():
   g_loss = generator.loss_function(g_y, g_y_pred)
   g_train_step = generator.optimize(g_loss)
   # Discriminator
-  d_x_real = tf.placeholder(tf.float32, [None, None, None, 3]), name='input_real']
-  d_y_real_pred = discriminator.forward(d_x_real, reuse=True)
-  d_y_fake_pred = discriminator.forward(g_y_pred, reuse=True)
+  d_x_real = tf.placeholder(tf.float32, [None, None, None, 3], name='input_real')
+  d_y_real_pred = discriminator.forward(d_x_real)
+  d_y_fake_pred = discriminator.forward(g_y_pred)
   d_loss = discriminator.loss_function(d_y_real_pred, d_y_fake_pred)
   d_train_step = discriminator.optimize(d_loss)
   
-  # test
-  [print(x.name) for x in tf.global_variables()]
 
-  # TODO create log folder
-  log_path = build_log_dir()
+  #[print(x.name) for x in tf.global_variables()]
+
+  # Create log folder
+  log_path = build_log_dir(args, sys.argv)
 
   with tf.Session() as sess:
+    # test
+    op = sess.graph.get_operations()
+    [print(m.values()) for m in op if 'generator' in m.name]
+    
     # Build input pipeline
     get_train_batch, get_val_batch, get_eval_batch, val_data, eval_data = build_inputs(args, sess)
     # Initialize
@@ -68,8 +75,8 @@ def main():
 
       # Get data
       batch_hr = sess.run(get_train_batch)
-      batch_lr = downsample_batch(batch_y, factor=4)
-      batch_lr, batch_hr = generator.preprocess(batch_lr, batch_hr)
+      batch_lr = downsample_batch(batch_hr, factor=4)
+      batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
 
       # Train discriminator
       if args.use_gan:
