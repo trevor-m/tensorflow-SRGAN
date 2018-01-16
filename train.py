@@ -12,7 +12,7 @@ def main():
   parser.add_argument('--load', type=str, help='Checkpoint to load all weights from.')
   parser.add_argument('--name', type=str, help='Name of experiment.')
   parser.add_argument('--overfit', action='store_true', help='Overfit to a single image.')
-  parser.add_argument('--batch-size', type=int, default=20, help='Mini-batch size.')
+  parser.add_argument('--batch-size', type=int, default=16, help='Mini-batch size.')
   parser.add_argument('--log-freq', type=int, default=1000, help='How many training iterations between testing/checkpoints.')
   parser.add_argument('--learning-rate', type=float, default=1e-4, help='Learning rate for Adam.')
   parser.add_argument('--content-loss', type=str, default='mse', choices=['mse', 'vgg22', 'vgg54'], help='Metric to use for content loss.')
@@ -43,7 +43,10 @@ def main():
   #[print(x.name) for x in tf.global_variables()]
 
   # Create log folder
-  log_path = build_log_dir(args, sys.argv)
+  if args.load and not args.name:
+    log_path = os.path.dirname(args.load)
+  else:
+    log_path = build_log_dir(args, sys.argv)
 
   with tf.Session() as sess:
     # test
