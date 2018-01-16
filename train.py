@@ -78,7 +78,7 @@ def main():
         with open(log_path + '/loss.csv', 'a') as f:
           f.write('%d, %.15f, %.15f\n' % (iteration, val_error, eval_error))
         # Save checkpoint
-        saver.save(sess, log_path, global_step=iteration, write_meta_graph=False)
+        saver.save(sess, os.path.join(log_path, 'weights'), global_step=iteration, write_meta_graph=False)
 
       # Get data
       batch_hr = sess.run(get_train_batch)
