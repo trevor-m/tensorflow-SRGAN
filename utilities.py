@@ -7,6 +7,8 @@ import datetime
 import os
 import shutil
 import math
+from scipy import misc
+import scipy.ndimage
 
 def process_individual_image(filename_queue, img_size, random_crop=False):
   """Individual loading & processing for each image"""
@@ -50,7 +52,7 @@ def build_inputs(args, sess):
     train_filenames = np.array(['overfit.png'])
     val_filenames = np.array(['overfit.png'])
     eval_filenames = np.array(['overfit.png'])
-    #args.batch_size = 1
+    args.batch_size = 1
     args.num_test = 1
   else:
     # Regular dataset
@@ -67,7 +69,7 @@ def build_inputs(args, sess):
   eval_data = create_tensor_from_files(eval_filenames[:5], sess, img_size=args.image_size_test)
 
   # Create input pipelines
-  get_train_batch = build_input_pipeline(train_filenames, batch_size=args.batch_size, img_size=args.image_size_train, random_crop=True)
+  get_train_batch = build_input_pipeline(train_filenames, batch_size=args.batch_size, img_size=args.image_size_train, random_crop=False)
   get_val_batch = build_input_pipeline(val_filenames, batch_size=args.batch_size, img_size=args.image_size_train)
   get_eval_batch = build_input_pipeline(eval_filenames, batch_size=args.batch_size, img_size=args.image_size_train)
   return get_train_batch, get_val_batch, get_eval_batch, val_data, eval_data
@@ -140,19 +142,19 @@ def evaluate_model(loss_function, get_batch, sess, num_images, batch_size):
     batch_hr = sess.run(get_batch)
     batch_lr = downsample_batch(batch_hr, factor=4)
     batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
-    loss += sess.run(loss_function, feed_dict={training: False, g_x: batch_lr, g_y: batch_hr})
+    loss += sess.run(loss_function, feed_dict={'training:0': False, 'input_lowres:0': batch_lr, 'input_highres:0':batch_hr})
     total += 1
   loss = loss / total
   return loss
 
-def test_examples(batch_hr, g_y_pred, epoch, log_path, prefix, num=5):
+def test_examples(sess, batch_hr, g_y_pred, epoch, log_path, prefix, num=5):
   """Test the first num(5) images and save the outputs"""
   # make feed dict with downsampled images
   batch_lr = downsample_batch(batch_hr, factor=4)
   batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
 
   # run everything through network
-  output = sess.run(g_y_pred, feed_dict={training: False, g_x: batch_lr, g_y: batch_hr})
+  output = sess.run(g_y_pred, feed_dict={'training:0': False, 'input_lowres:0': batch_lr})
   
   # iterate over all 5 examples
   for i in range(output.shape[0]):

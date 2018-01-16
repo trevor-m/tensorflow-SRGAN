@@ -15,20 +15,13 @@ class SRGanGenerator:
       print('Invalid content loss function. Must be \'mse\', \'vgg22\', or \'vgg54\'.')
       exit()
     self.content_loss = content_loss
-    
-  def PReLU(self, x, scope=None):
-    with tf.variable_scope(name_or_scope=scope, default_name="prelu"):
-      alphas = tf.get_variable('alpha', x.get_shape()[-1], initializer=tf.constant_initializer(0.0), dtype=tf.float32)
-      pos = tf.nn.relu(x)
-      neg = alphas * (x - abs(x)) * 0.5
-      return pos + neg
 
   def ResidualBlock(self, x, kernel_size, filters, strides=1):
     """Residual block a la ResNet"""
     skip = x
     x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same')
     x = tf.layers.batch_normalization(x, training=self.training)
-    x = self.PReLU(x)
+    x = tf.contrib.keras.layers.PReLU(shared_axes=[1,2])(x)
     x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same')
     x = tf.layers.batch_normalization(x, training=self.training)
     x = x + skip
@@ -38,14 +31,14 @@ class SRGanGenerator:
     """Upsample 2x via SubpixelConv"""
     x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same')
     x = tf.depth_to_space(x, 2)
-    x = self.PReLU(x)
+    x = tf.contrib.keras.layers.PReLU(shared_axes=[1,2])(x)
     return x
 
   def forward(self, x):
     """Builds the forward pass network graph"""
     with tf.variable_scope('generator') as scope:
       x = tf.layers.conv2d(x, kernel_size=9, filters=64, strides=1, padding='same')
-      x = self.PReLU(x)
+      tf.contrib.keras.layers.PReLU(shared_axes=[1,2])(x)
       skip = x
 
       # B x ResidualBlocks
@@ -69,10 +62,10 @@ class SRGanGenerator:
       return tf.reduce_mean(tf.square(y - y_pred), name='content_loss')
     if self.content_loss == 'vgg22':
       # TODO
-      return 0
+      return 0 # * 1.0/12.75
     if self.content_loss == 'vgg54':
       # TODO
-      return 0
+      return 0 # * 1.0/12.75
 
   def _adversarial_loss(self, y_pred):
     """GAN"""
@@ -91,7 +84,10 @@ class SRGanGenerator:
   
   def optimize(self, loss):
     # TODO limit variables trained to only generator
-    return tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
+    # update need to be added for batch normalization
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+      return tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
 
 
 class SRGanDiscriminator:
@@ -143,4 +139,6 @@ class SRGanDiscriminator:
 
   def optimize(self, loss):
     # TODO limit variables trained
-    return tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+      return tf.train.AdamOptimizer(self.learning_rate).minimize(loss)

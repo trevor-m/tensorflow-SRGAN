@@ -23,7 +23,7 @@ def main():
   args = parser.parse_args()
   
   # Set up models
-  training = tf.placeholder(tf.bool)
+  training = tf.placeholder(tf.bool, name='training')
   discriminator = srgan.SRGanDiscriminator(training=training)
   generator = srgan.SRGanGenerator(discriminator=discriminator, training=training, learning_rate=args.learning_rate, content_loss=args.content_loss, use_gan=args.use_gan)
   # Generator
@@ -47,8 +47,8 @@ def main():
 
   with tf.Session() as sess:
     # test
-    op = sess.graph.get_operations()
-    [print(m.values()) for m in op if 'generator' in m.name]
+    #op = sess.graph.get_operations()
+    #[print(m.values()) for m in op if 'generator' in m.name]
     
     # Build input pipeline
     get_train_batch, get_val_batch, get_eval_batch, val_data, eval_data = build_inputs(args, sess)
@@ -71,8 +71,8 @@ def main():
       if iteration % args.log_freq == 0:
         val_error = evaluate_model(g_loss, get_val_batch, sess, args.num_test, args.batch_size)
         eval_error = evaluate_model(g_loss, get_eval_batch, sess, args.num_test, args.batch_size)
-        test_examples(val_data, g_y_pred, iteration, log_path, 'val')
-        test_examples(val_data, g_y_pred, iteration, log_path, 'eval')
+        test_examples(sess, val_data, g_y_pred, iteration, log_path, 'val')
+        test_examples(sess, eval_data, g_y_pred, iteration, log_path, 'eval')
         # Log error
         print('[%d] Test: %.7f, Train: %.7f' % (iteration, val_error, eval_error))
         with open(log_path + '/loss.csv', 'a') as f:
