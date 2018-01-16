@@ -5,11 +5,12 @@ class SRGanGenerator:
   
   Reference: https://arxiv.org/pdf/1609.04802.pdf
   """
-  def __init__(self, discriminator, content_loss='mse', use_gan=True, learning_rate=1e-4, num_blocks=16, num_upsamples=2):
+  def __init__(self, discriminator, training, content_loss='mse', use_gan=True, learning_rate=1e-4, num_blocks=16, num_upsamples=2):
     self.learning_rate = learning_rate
     self.num_blocks = num_blocks
     self.num_upsamples = num_upsamples
     self.use_gan = use_gan
+    self.training = training
     if content_loss not in ['mse', 'vgg22', 'vgg54']:
       print('Invalid content loss function. Must be \'mse\', \'vgg22\', or \'vgg54\'.')
       exit()
@@ -26,10 +27,10 @@ class SRGanGenerator:
     """Residual block a la ResNet"""
     skip = x
     x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same')
-    x = tf.layers.batch_normalization(x)
+    x = tf.layers.batch_normalization(x, training=self.training)
     x = self.PReLU(x)
     x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same')
-    x = tf.layers.batch_normalization(x)
+    x = tf.layers.batch_normalization(x, training=self.training)
     x = x + skip
     return x
 
@@ -52,7 +53,7 @@ class SRGanGenerator:
         x = self.ResidualBlock(x, kernel_size=3, filters=64, strides=1)
 
       x = tf.layers.conv2d(x, kernel_size=3, filters=64, strides=1, padding='same')
-      x = tf.layers.batch_normalization(x)
+      x = tf.layers.batch_normalization(x, training=self.training)
       x = x + skip
 
       # Upsample blocks
@@ -98,14 +99,15 @@ class SRGanDiscriminator:
   
   Reference: https://arxiv.org/pdf/1609.04802.pdf
   """
-  def __init__(self, learning_rate=1e-4):
+  def __init__(self, training, learning_rate=1e-4):
     self.graph_created = False
     self.learning_rate = learning_rate
+    self.training = training
 
   def ConvolutionBlock(self, x, kernel_size, filters, strides):
     """Conv2D + BN + LeakyReLU"""
     x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same')
-    x = tf.layers.batch_normalization(x)
+    x = tf.layers.batch_normalization(x, training=self.training)
     x = tf.contrib.keras.layers.LeakyReLU(alpha=0.2)(x)
     return x
 

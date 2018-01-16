@@ -24,8 +24,8 @@ def main():
   
   # Set up models
   training = tf.placeholder(tf.bool)
-  discriminator = srgan.SRGanDiscriminator()
-  generator = srgan.SRGanGenerator(discriminator=discriminator, learning_rate=args.learning_rate, content_loss=args.content_loss, use_gan=args.use_gan)
+  discriminator = srgan.SRGanDiscriminator(training=training)
+  generator = srgan.SRGanGenerator(discriminator=discriminator, training=training, learning_rate=args.learning_rate, content_loss=args.content_loss, use_gan=args.use_gan)
   # Generator
   g_x = tf.placeholder(tf.float32, [None, None, None, 3], name='input_lowres')
   g_y = tf.placeholder(tf.float32, [None, None, None, 3], name='input_highres')
