@@ -3,6 +3,7 @@ from tensorflow.python.training import queue_runner
 import numpy as np
 import argparse
 import srgan
+import benchmark
 import os
 import sys
 from utilities import build_inputs, downsample_batch, build_log_dir, preprocess, evaluate_model, test_examples
@@ -39,8 +40,10 @@ def main():
   d_loss = discriminator.loss_function(d_y_real_pred, d_y_fake_pred)
   d_train_step = discriminator.optimize(d_loss)
   
-
-  #[print(x.name) for x in tf.global_variables()]
+  # Set up benchmarks
+  benchmarks = [benchmark.Benchmark('../../Benchmarks/Set5', name='Set5'),
+                benchmark.Benchmark('../../Benchmarks/Set14', name='Set14'),
+                benchmark.Benchmark('../../Benchmarks/BSD100', name='BSD100')]
 
   # Create log folder
   if args.load and not args.name:
@@ -77,7 +80,13 @@ def main():
         test_examples(sess, val_data, g_y_pred, iteration, log_path, 'val')
         test_examples(sess, eval_data, g_y_pred, iteration, log_path, 'eval')
         # Log error
-        print('[%d] Test: %.7f, Train: %.7f' % (iteration, val_error, eval_error))
+        print('[%d] Test: %.7f, Train: %.7f' % (iteration, val_error, eval_error), end='')
+        # Evaluate benchmarks
+        for benchmark in benchmarks:
+          psnr, ssim, _, _ = benchmark.evaluate(sess, g_y_pred, save_images=False)
+          print(' [%s] PSNR: %.2f, SSIM: %.4f', benchmark.name, psnr, ssim)
+        print()
+        
         with open(log_path + '/loss.csv', 'a') as f:
           f.write('%d, %.15f, %.15f\n' % (iteration, val_error, eval_error))
         # Save checkpoint
