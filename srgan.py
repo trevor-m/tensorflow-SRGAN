@@ -10,6 +10,7 @@ class SRGanGenerator:
     self.num_blocks = num_blocks
     self.num_upsamples = num_upsamples
     self.use_gan = use_gan
+    self.discriminator = discriminator
     self.training = training
     if content_loss not in ['mse', 'vgg22', 'vgg54']:
       print('Invalid content loss function. Must be \'mse\', \'vgg22\', or \'vgg54\'.')
