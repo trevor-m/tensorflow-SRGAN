@@ -1,3 +1,7 @@
+"""Training program for SRGAN implementation.
+
+Benchmark data sets provided by the paper are available here: https://twitter.app.box.com/s/lcue6vlrd01ljkdtdkhmfvk7vtjhetog
+"""
 import tensorflow as tf
 from tensorflow.python.training import queue_runner
 import numpy as np
