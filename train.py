@@ -7,7 +7,7 @@ from tensorflow.python.training import queue_runner
 import numpy as np
 import argparse
 import srgan
-import benchmark
+from benchmark import Benchmark
 import os
 import sys
 from utilities import build_inputs, downsample_batch, build_log_dir, preprocess, evaluate_model, test_examples
@@ -45,9 +45,9 @@ def main():
   d_train_step = discriminator.optimize(d_loss)
   
   # Set up benchmarks
-  benchmarks = [benchmark.Benchmark('../../Benchmarks/Set5', name='Set5'),
-                benchmark.Benchmark('../../Benchmarks/Set14', name='Set14'),
-                benchmark.Benchmark('../../Benchmarks/BSD100', name='BSD100')]
+  benchmarks = [Benchmark('../../Benchmarks/Set5', name='Set5'),
+                Benchmark('../../Benchmarks/Set14', name='Set14'),
+                Benchmark('../../Benchmarks/BSD100', name='BSD100')]
 
   # Create log folder
   if args.load and not args.name:
