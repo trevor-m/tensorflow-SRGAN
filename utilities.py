@@ -98,7 +98,7 @@ def build_log_dir(args, arguments):
   print('Logging results for this session in folder "%s".' % log_path)
   # Output csv header
   with open(log_path + '/loss.csv', 'a') as f:
-    f.write('iteration, val_error, eval_error\n')
+    f.write('iteration, val_error, eval_error, set5_psnr, set5_ssim, set14_psnr, set14_ssim, bsd100_psnr, bsd100_ssim\n')
   # Copy this code to folder
   shutil.copy2('srgan.py', os.path.join(log_path, 'srgan.py'))
   shutil.copy2('train.py', os.path.join(log_path, 'train.py'))
