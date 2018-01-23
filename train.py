@@ -23,8 +23,10 @@ def main():
   parser.add_argument('--content-loss', type=str, default='mse', choices=['mse', 'vgg22', 'vgg54'], help='Metric to use for content loss.')
   parser.add_argument('--use-gan', action='store_true', help='Add adversarial loss term to generator and trains discriminator.')
   parser.add_argument('--image-size-train', type=int, default=96, help='Dimensions of training images.')
-  parser.add_argument('--image-size-test', type=int, default=96, help='Dimensions of testing images.')
+  parser.add_argument('--image-size-test', type=int, default=512, help='Dimensions of testing images.')
   parser.add_argument('--num-test', type=int, default=1000, help='Number of images to test on.')
+  parser.add_argument('--vgg-weights', type=str, default='vgg_19.ckpt', help='File containing VGG19 weights (tf.slim)')
+  parser.add_argument('--validate-benchmarks', action='store_true', help='If set, validates that the benchmarking metrics are correct for the images provided by the authors of the SRGAN paper.')
   args = parser.parse_args()
   
   # Set up models
@@ -45,9 +47,12 @@ def main():
   d_train_step = discriminator.optimize(d_loss)
   
   # Set up benchmarks
-  benchmarks = [Benchmark('../../Benchmarks/Set5', name='Set5'),
-                Benchmark('../../Benchmarks/Set14', name='Set14'),
-                Benchmark('../../Benchmarks/BSD100', name='BSD100')]
+  benchmarks = [Benchmark('Benchmarks/Set5', name='Set5'),
+                Benchmark('Benchmarks/Set14', name='Set14'),
+                Benchmark('Benchmarks/BSD100', name='BSD100')]
+  if args.validate_benchmarks:
+    for benchmark in benchmarks:
+      benchmark.validate()
 
   # Create log folder
   if args.load and not args.name:
@@ -68,13 +73,17 @@ def main():
     # Start input pipeline thread(s)
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-
+    
     # Load saved weights
     iteration = 0
     saver = tf.train.Saver()
     if args.load:
       iteration = int(args.load.split('-')[-1])
       saver.restore(sess, args.load)
+    # Load VGG
+    if 'vgg' in args.content_loss:
+      vgg_saver = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='vgg_19'))
+      vgg_saver.restore(sess, args.vgg_weights)
 
     # Train
     while True:
@@ -86,13 +95,15 @@ def main():
         # Log error
         print('[%d] Test: %.7f, Train: %.7f' % (iteration, val_error, eval_error), end='')
         # Evaluate benchmarks
+        log_line = ''
         for benchmark in benchmarks:
-          psnr, ssim, _, _ = benchmark.evaluate(sess, g_y_pred, save_images=False)
-          print(' [%s] PSNR: %.2f, SSIM: %.4f', benchmark.name, psnr, ssim)
+          psnr, ssim, _, _ = benchmark.evaluate(sess, g_y_pred)
+          print(' [%s] PSNR: %.2f, SSIM: %.4f' %( benchmark.name, psnr, ssim), end='')
+          log_line += ',%.7f, %.7f' %(psnr, ssim)
         print()
-        
+        # Write to log
         with open(log_path + '/loss.csv', 'a') as f:
-          f.write('%d, %.15f, %.15f\n' % (iteration, val_error, eval_error))
+          f.write('%d, %.15f, %.15f%s\n' % (iteration, val_error, eval_error, log_line))
         # Save checkpoint
         saver.save(sess, os.path.join(log_path, 'weights'), global_step=iteration, write_meta_graph=False)
 
