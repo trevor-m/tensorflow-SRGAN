@@ -1,4 +1,5 @@
 import tensorflow as tf
+from vgg19 import vgg_19
 
 class SRGanGenerator:
   """SRGAN Generator Model from Ledig et. al. 2017
@@ -12,6 +13,7 @@ class SRGanGenerator:
     self.use_gan = use_gan
     self.discriminator = discriminator
     self.training = training
+    self.reuse_vgg = False
     if content_loss not in ['mse', 'vgg22', 'vgg54']:
       print('Invalid content loss function. Must be \'mse\', \'vgg22\', or \'vgg54\'.')
       exit()
@@ -56,17 +58,40 @@ class SRGanGenerator:
       
       x = tf.layers.conv2d(x, kernel_size=9, filters=3, strides=1, padding='same', name='forward')
       return x
+      
+  def vgg_forward(self, x, layer, scope):
+    # apply vgg preprocessing
+    # move to range 0-255
+    x = 255.0 * (0.5 * (x + 1.0))
+    # subtract means
+    mean = tf.constant([123.68, 116.779, 103.939], dtype=tf.float32, shape=[1, 1, 1, 3], name='img_mean') # RGB means from VGG paper
+    x = x - mean
+    # convert to BGR
+    x = x[:,:,:,::-1]
+    #x = tf.transpose(x, [0,3,2,1])
+  
+    _,layers = vgg_19(x, is_training=False, reuse=self.reuse_vgg)
+    self.reuse_vgg = True
+    return layers[scope + layer]
 
   def _content_loss(self, y, y_pred):
     """MSE, VGG22, or VGG54"""
     if self.content_loss == 'mse':
       return tf.reduce_mean(tf.square(y - y_pred), name='content_loss')
+      
     if self.content_loss == 'vgg22':
-      # TODO
-      return 0 # * 1.0/12.75
+      with tf.name_scope('vgg19_1') as scope:
+        vgg_y = self.vgg_forward(y, 'vgg_19/conv2/conv2_2', scope)
+      with tf.name_scope('vgg19_2') as scope:
+        vgg_y_pred = self.vgg_forward(y_pred, 'vgg_19/conv2/conv2_2', scope)
+      return 0.006 * tf.reduce_mean(tf.square(vgg_y - vgg_y_pred)) + 2e-8 * tf.reduce_sum(tf.image.total_variation(y_pred))
+      
     if self.content_loss == 'vgg54':
-      # TODO
-      return 0 # * 1.0/12.75
+      with tf.name_scope('vgg19_1') as scope:
+        vgg_y = self.vgg_forward(y, 'vgg_19/conv5/conv5_4', scope)
+      with tf.name_scope('vgg19_2') as scope:
+        vgg_y_pred = self.vgg_forward(y_pred, 'vgg_19/conv5/conv5_4', scope)
+      return 0.006 * tf.reduce_mean(tf.square(vgg_y - vgg_y_pred))
 
   def _adversarial_loss(self, y_pred):
     """GAN"""
@@ -84,11 +109,11 @@ class SRGanGenerator:
     return self._content_loss(y, y_pred)
   
   def optimize(self, loss):
-    # TODO limit variables trained to only generator
-    # update need to be added for batch normalization
+    #tf.control_dependencies([discrim_train
+    # update_ops needs to be here for batch normalization to work
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
-      return tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
+      return tf.train.AdamOptimizer(self.learning_rate).minimize(loss, var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
 
 
 class SRGanDiscriminator:
@@ -139,7 +164,6 @@ class SRGanDiscriminator:
     return tf.reduce_mean(loss_real + loss_fake)
 
   def optimize(self, loss):
-    # TODO limit variables trained
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
-      return tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
+      return tf.train.AdamOptimizer(self.learning_rate).minimize(loss, var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator'))
