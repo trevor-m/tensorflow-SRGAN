@@ -114,7 +114,7 @@ def main():
 
       # Train discriminator
       if args.use_gan:
-        sess.run(d_train_step, feed_dict={training: True, g_x: batch_lr, d_x_real: batch_hr})
+        sess.run(d_train_step, feed_dict={training: True, g_x: batch_lr, g_y: batch_hr, d_x_real: batch_hr})
       # Train generator
       sess.run(g_train_step, feed_dict={training: True, g_x: batch_lr, g_y: batch_hr})
 
