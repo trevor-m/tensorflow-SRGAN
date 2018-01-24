@@ -68,8 +68,7 @@ class SRGanGenerator:
     x = x - mean
     # convert to BGR
     x = x[:,:,:,::-1]
-    #x = tf.transpose(x, [0,3,2,1])
-  
+    # send through vgg19
     _,layers = vgg_19(x, is_training=False, reuse=self.reuse_vgg)
     self.reuse_vgg = True
     return layers[scope + layer]
