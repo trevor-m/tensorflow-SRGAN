@@ -84,18 +84,18 @@ class SRGanGenerator:
         vgg_y = self.vgg_forward(y, 'vgg_19/conv2/conv2_2', scope)
       with tf.name_scope('vgg19_2') as scope:
         vgg_y_pred = self.vgg_forward(y_pred, 'vgg_19/conv2/conv2_2', scope)
-      return 0.006 * tf.reduce_mean(tf.square(vgg_y - vgg_y_pred)) + 2e-8 * tf.reduce_sum(tf.image.total_variation(y_pred))
+      return tf.add(0.006*tf.reduce_mean(tf.square(vgg_y - vgg_y_pred)), 2e-8*tf.reduce_sum(tf.image.total_variation(y_pred)), name='content_loss')
       
     if self.content_loss == 'vgg54':
       with tf.name_scope('vgg19_1') as scope:
         vgg_y = self.vgg_forward(y, 'vgg_19/conv5/conv5_4', scope)
       with tf.name_scope('vgg19_2') as scope:
         vgg_y_pred = self.vgg_forward(y_pred, 'vgg_19/conv5/conv5_4', scope)
-      return 0.006 * tf.reduce_mean(tf.square(vgg_y - vgg_y_pred))
+      return tf.identity(0.006*tf.reduce_mean(tf.square(vgg_y - vgg_y_pred)), name-'content_loss')
 
   def _adversarial_loss(self, y_pred):
     """GAN"""
-    y_discrim = self.discriminator.forward(y_pred, reuse=False)
+    y_discrim = self.discriminator.forward(y_pred)
     return tf.reduce_sum(-tf.log(y_discrim), name='adversarial_loss')
 
   def _perceptual_loss(self, y, y_pred):
