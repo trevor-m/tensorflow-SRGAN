@@ -104,7 +104,7 @@ class SRGanGenerator:
   def loss_function(self, y, y_pred):
     """Loss function"""
     if self.use_gan:
-      return self._perceptual_loss(y, y_pred, name='loss')
+      return self._perceptual_loss(y, y_pred)
     return self._content_loss(y, y_pred)
   
   def optimize(self, loss):
