@@ -22,10 +22,10 @@ class SRGanGenerator:
   def ResidualBlock(self, x, kernel_size, filters, strides=1):
     """Residual block a la ResNet"""
     skip = x
-    x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same')
+    x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same', use_bias=False)
     x = tf.layers.batch_normalization(x, training=self.training)
     x = tf.contrib.keras.layers.PReLU(shared_axes=[1,2])(x)
-    x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same')
+    x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same', use_bias=False)
     x = tf.layers.batch_normalization(x, training=self.training)
     x = x + skip
     return x
@@ -48,7 +48,7 @@ class SRGanGenerator:
       for i in range(self.num_blocks):
         x = self.ResidualBlock(x, kernel_size=3, filters=64, strides=1)
 
-      x = tf.layers.conv2d(x, kernel_size=3, filters=64, strides=1, padding='same')
+      x = tf.layers.conv2d(x, kernel_size=3, filters=64, strides=1, padding='same', use_bias=False)
       x = tf.layers.batch_normalization(x, training=self.training)
       x = x + skip
 
@@ -95,11 +95,11 @@ class SRGanGenerator:
   def _adversarial_loss(self, y_pred):
     """GAN"""
     y_discrim = self.discriminator.forward(y_pred)
-    return tf.reduce_sum(-tf.log(y_discrim), name='adversarial_loss')
+    return tf.reduce_mean(-tf.log(y_discrim), name='adversarial_loss')
 
   def _perceptual_loss(self, y, y_pred):
     """Weighted sum of content and adversarial loss"""
-    return tf.add(self._content_loss(y, y_pred), 1e-3*self._adversarial_loss(y), name='loss')
+    return tf.add(self._content_loss(y, y_pred), 1e-3*self._adversarial_loss(y_pred), name='loss')
 
   def loss_function(self, y, y_pred):
     """Loss function"""
@@ -110,7 +110,7 @@ class SRGanGenerator:
   def optimize(self, loss):
     #tf.control_dependencies([discrim_train
     # update_ops needs to be here for batch normalization to work
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='generator')
     with tf.control_dependencies(update_ops):
       return tf.train.AdamOptimizer(self.learning_rate).minimize(loss, var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
 
@@ -127,7 +127,7 @@ class SRGanDiscriminator:
 
   def ConvolutionBlock(self, x, kernel_size, filters, strides):
     """Conv2D + BN + LeakyReLU"""
-    x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same')
+    x = tf.layers.conv2d(x, kernel_size=kernel_size, filters=filters, strides=strides, padding='same', use_bias=False)
     x = tf.layers.batch_normalization(x, training=self.training)
     x = tf.contrib.keras.layers.LeakyReLU(alpha=0.2)(x)
     return x
@@ -160,9 +160,9 @@ class SRGanDiscriminator:
     loss_real = tf.log(y_real_pred)
     loss_fake = tf.log(1-y_fake_pred)
     # TODO: alpha
-    return tf.reduce_mean(loss_real + loss_fake)
+    return tf.reduce_mean(-(loss_real + loss_fake))
 
   def optimize(self, loss):
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')
     with tf.control_dependencies(update_ops):
       return tf.train.AdamOptimizer(self.learning_rate).minimize(loss, var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator'))
