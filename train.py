@@ -15,6 +15,7 @@ from utilities import build_inputs, downsample_batch, build_log_dir, preprocess,
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--load', type=str, help='Checkpoint to load all weights from.')
+  parser.add_argument('--load-gen', type=str, help='Checkpoint to load generator weights only from.')
   parser.add_argument('--name', type=str, help='Name of experiment.')
   parser.add_argument('--overfit', action='store_true', help='Overfit to a single image.')
   parser.add_argument('--batch-size', type=int, default=16, help='Mini-batch size.')
@@ -31,7 +32,7 @@ def main():
   
   # Set up models
   training = tf.placeholder(tf.bool, name='training')
-  discriminator = srgan.SRGanDiscriminator(training=training)
+  discriminator = srgan.SRGanDiscriminator(training=training, image_size=args.image_size_train)
   generator = srgan.SRGanGenerator(discriminator=discriminator, training=training, learning_rate=args.learning_rate, content_loss=args.content_loss, use_gan=args.use_gan)
   # Generator
   g_x = tf.placeholder(tf.float32, [None, None, None, 3], name='input_lowres')
@@ -77,6 +78,12 @@ def main():
     # Load saved weights
     iteration = 0
     saver = tf.train.Saver()
+    # Load generator
+    if args.load_gen:
+      gen_saver = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='generator'))
+      iteration = int(args.load_gen.split('-')[-1])
+      gen_saver.restore(sess, args.load_gen)
+    # Load all
     if args.load:
       iteration = int(args.load.split('-')[-1])
       saver.restore(sess, args.load)
@@ -88,8 +95,11 @@ def main():
     # Train
     while True:
       if iteration % args.log_freq == 0:
-        val_error = evaluate_model(g_loss, get_val_batch, sess, args.num_test, args.batch_size)
-        eval_error = evaluate_model(g_loss, get_eval_batch, sess, args.num_test, args.batch_size)
+        if not args.use_gan:
+          val_error = evaluate_model(g_loss, get_val_batch, sess, args.num_test, args.batch_size)
+          eval_error = evaluate_model(g_loss, get_eval_batch, sess, args.num_test, args.batch_size)
+        else:
+          val_error, eval_error = 0,0
         test_examples(sess, val_data, g_y_pred, iteration, log_path, 'val')
         test_examples(sess, eval_data, g_y_pred, iteration, log_path, 'eval')
         # Log error

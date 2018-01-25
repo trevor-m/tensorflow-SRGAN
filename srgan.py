@@ -120,10 +120,11 @@ class SRGanDiscriminator:
   
   Reference: https://arxiv.org/pdf/1609.04802.pdf
   """
-  def __init__(self, training, learning_rate=1e-4):
+  def __init__(self, training, learning_rate=1e-4, image_size=96):
     self.graph_created = False
     self.learning_rate = learning_rate
     self.training = training
+    self.image_size = image_size
 
   def ConvolutionBlock(self, x, kernel_size, filters, strides):
     """Conv2D + BN + LeakyReLU"""
@@ -135,9 +136,13 @@ class SRGanDiscriminator:
   def forward(self, x):
     """Builds the forward pass network graph"""
     with tf.variable_scope('discriminator') as scope:
+      # Reuse variables when graph is applied again
       if self.graph_created:
         scope.reuse_variables()
       self.graph_created = True
+
+      # Image dimensions are fixed to the training size because of the FC layer
+      x.set_shape([None, self.image_size, self.image_size, 3])
 
       x = tf.layers.conv2d(x, kernel_size=3, filters=64, strides=1, padding='same')
       x = tf.contrib.keras.layers.LeakyReLU(alpha=0.2)(x)
@@ -150,6 +155,7 @@ class SRGanDiscriminator:
       x = self.ConvolutionBlock(x, 3, 512, 1)
       x = self.ConvolutionBlock(x, 3, 512, 2)
 
+      x = tf.contrib.layers.flatten(x)
       x = tf.layers.dense(x, 1024)
       x = tf.contrib.keras.layers.LeakyReLU(alpha=0.2)(x)
       x = tf.layers.dense(x, 1)
