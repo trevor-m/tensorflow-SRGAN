@@ -52,7 +52,7 @@ def build_inputs(args, sess):
     train_filenames = np.array(['overfit.png'])
     val_filenames = np.array(['overfit.png'])
     eval_filenames = np.array(['overfit.png'])
-    args.batch_size = 1
+    #args.batch_size = 1
     args.num_test = 1
   else:
     # Regular dataset
