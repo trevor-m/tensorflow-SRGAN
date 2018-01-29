@@ -62,10 +62,10 @@ class SRGanGenerator:
   def vgg_forward(self, x, layer, scope):
     # apply vgg preprocessing
     # move to range 0-255
-    x = 255.0 * (0.5 * (x + 1.0))
+    #x = 255.0 * (0.5 * (x + 1.0))
     # subtract means
-    mean = tf.constant([123.68, 116.779, 103.939], dtype=tf.float32, shape=[1, 1, 1, 3], name='img_mean') # RGB means from VGG paper
-    x = x - mean
+    #mean = tf.constant([123.68, 116.779, 103.939], dtype=tf.float32, shape=[1, 1, 1, 3], name='img_mean') # RGB means from VGG paper
+    #x = x - mean
     # convert to BGR
     x = x[:,:,:,::-1]
     # send through vgg19
