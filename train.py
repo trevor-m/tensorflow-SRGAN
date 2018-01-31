@@ -93,19 +93,16 @@ def main():
     while True:
       if iteration % args.log_freq == 0:
         # Test every log-freq iterations
-        if not args.use_gan:
-          val_error = evaluate_model(g_loss, get_val_batch, sess, args.num_test, args.batch_size)
-          eval_error = evaluate_model(g_loss, get_eval_batch, sess, args.num_test, args.batch_size)
-        else:
-          val_error, eval_error = 0,0
-        test_examples(sess, val_data, g_y_pred, iteration, log_path, 'val')
-        test_examples(sess, eval_data, g_y_pred, iteration, log_path, 'eval')
+        val_error = evaluate_model(g_loss, get_val_batch, sess, args.num_test, args.batch_size)
+        eval_error = evaluate_model(g_loss, get_eval_batch, sess, args.num_test, args.batch_size)
+        #test_examples(sess, val_data, g_y_pred, iteration, log_path, 'val')
+        #test_examples(sess, eval_data, g_y_pred, iteration, log_path, 'eval')
         # Log error
         print('[%d] Test: %.7f, Train: %.7f' % (iteration, val_error, eval_error), end='')
         # Evaluate benchmarks
         log_line = ''
         for benchmark in benchmarks:
-          psnr, ssim, _, _ = benchmark.evaluate(sess, g_y_pred)
+          psnr, ssim, _, _ = benchmark.evaluate(sess, g_y_pred, log_path, iteration)
           print(' [%s] PSNR: %.2f, SSIM: %.4f' %( benchmark.name, psnr, ssim), end='')
           log_line += ',%.7f, %.7f' %(psnr, ssim)
         print()

@@ -87,13 +87,39 @@ class Benchmark:
       psnr, ssim, _, _ = self.test_images(self.images_hr, model_output)
       print('Validate %-6s for %-14s: PSNR: %.2f, SSIM: %.4f' % (self.name, model, psnr, ssim))
 
-  def evaluate(self, sess, g_y_pred, save_images=False):
+  def save_image(self, image, path):
+    if not os.path.exists(path):
+      os.makedirs(path)
+    misc.toimage(image, cmin=0, cmax=255).save(path)
+
+  def save_images(self, images, log_path, iteration):
+    count = 0
+    for output, lr, hr, name in zip(images, self.images_lr, self.images_hr, self.names):
+      # Save output
+      path = os.path.join(log_path, self.name, '%s_%d' % (name, iteration), '%d_out.png' % epoch)
+      self.save_image(output, path)
+      # Save ground truth
+      path = os.path.join(log_path, self.name, '%s_%d' % (name, iteration), '%d_hr.png' % epoch)
+      self.save_image(hr, path)
+      # Save low res
+      path = os.path.join(log_path, self.name, '%s_%d' % (name, iteration), '%d_lr.png' % epoch)
+      self.save_image(lr, path)
+
+      # Hack so that we only do first 14 images in BSD100 instead of the whole thing
+      count += 1
+      if count > 14:
+        break
+
+  def evaluate(self, sess, g_y_pred, log_path=None, iteration=0):
     """Evaluate benchmark, returning the score and saving images."""
     pred = []
     for i, lr in enumerate(self.images_lr):
       # feed images 1 by 1 because they have different sizes
       lr = lr / 255.0
-      output = sess.run(g_y_pred, feed_dict={'training:0': False, 'input_lowres:0': lr[np.newaxis]})
+      output = sess.run(g_y_pred, feed_dict={'d_training:0': False, 'g_training:0': False, 'input_lowres:0': lr[np.newaxis]})
       # deprocess output
       pred.append(self.deprocess(np.squeeze(output, axis=0)))
+    # save images
+    if log_path:
+      self.save_images(pred, log_path, iteration)
     return self.test_images(self.images_hr, pred)

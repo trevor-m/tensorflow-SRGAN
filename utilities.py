@@ -107,7 +107,7 @@ def build_log_dir(args, arguments):
   with open(log_path + '/args.txt', 'w+') as f:
     f.write(' '.join(arguments))
   # Make directory for each visual example
-  num = 5
+  """num = 5
   if args.overfit:
     num = 1
   for i in range(num):
@@ -117,7 +117,7 @@ def build_log_dir(args, arguments):
     full_path = os.path.join(log_path, 'val_'+str(i))
     if not os.path.exists(full_path):
       os.makedirs(full_path)
-  
+  """
   return log_path
 
 def preprocess(lr, hr):
