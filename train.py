@@ -43,9 +43,9 @@ def main():
   g_train_step = generator.optimize(g_loss)
   # Discriminator
   d_x_real = tf.placeholder(tf.float32, [None, None, None, 3], name='input_real')
-  d_y_real_pred = discriminator.forward(d_x_real)
-  d_y_fake_pred = discriminator.forward(g_y_pred)
-  d_loss = discriminator.loss_function(d_y_real_pred, d_y_fake_pred)
+  d_y_real_pred, d_y_real_pred_logits = discriminator.forward(d_x_real)
+  d_y_fake_pred, d_y_fake_pred_logits = discriminator.forward(g_y_pred)
+  d_loss = discriminator.loss_function(d_y_real_pred_logits, d_y_fake_pred_logits)
   d_train_step = discriminator.optimize(d_loss)
   
   # Set up benchmarks

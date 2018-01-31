@@ -94,8 +94,9 @@ class SRGanGenerator:
 
   def _adversarial_loss(self, y_pred):
     """For GAN: We want to minimize log(1-D(G(x)), however it is formulated as -log(D(G(x)) for better gradients."""
-    y_discrim = self.discriminator.forward(y_pred)
-    return tf.reduce_mean(-tf.log(y_discrim), name='adversarial_loss')
+    y_discrim, y_discrim_logits = self.discriminator.forward(y_pred)
+    return losses.sigmoid_cross_entropy(tf.ones_like(y_discrim_logits), y_discrim_logits)
+    #return tf.reduce_mean(-tf.log(y_discrim), name='adversarial_loss')
 
   def _perceptual_loss(self, y, y_pred):
     """Weighted sum of content and adversarial loss"""
@@ -158,15 +159,21 @@ class SRGanDiscriminator:
       x = tf.contrib.layers.flatten(x)
       x = tf.layers.dense(x, 1024)
       x = tf.contrib.keras.layers.LeakyReLU(alpha=0.2)(x)
-      x = tf.layers.dense(x, 1)
-      x = tf.sigmoid(x, name='forward')
-      return x
+      logits = tf.layers.dense(x, 1)
+      x = tf.sigmoid(logits, name='forward')
+      return x, logits
 
-  def loss_function(self, y_real_pred, y_fake_pred):
-    """Discriminator wants to maximize log(y_real) + log(1-y_fake), TF doesn't support maximize so we minimize the negative"""
-    loss_real = tf.log(y_real_pred)
-    loss_fake = tf.log(1-y_fake_pred)
-    return tf.reduce_mean(-(loss_real + loss_fake))
+  def loss_function(self, y_real_pred_logit, y_fake_pred_logit):
+    """Discriminator wants to maximize log(y_real) + log(1-y_fake), TF doesn't support maximize so we minimize the negative.
+    We use the modified_discriminator_loss suggested by TFGAN
+    https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/gan/python/losses/python/losses_impl.py
+    Also uses label smoothing for positive labels (https://arxiv.org/abs/1606.03498)
+    """
+    #loss_real = tf.reduce_mean(tf.log(y_real_pred))
+    #loss_fake = tf.log(1-y_fake_pred)
+    loss_real = tf.losses.sigmoid_cross_entropy(tf.ones_like(y_real_pred), y_real_pred, label_smoothing=0.25)
+    loss_fake = tf.losses.sigmoid_cross_entropy(tf.zeros_like(y_fake_pred), y_fake_pred)
+    return tf.reduce_mean(loss_real + loss_fake)
 
   def optimize(self, loss):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')
