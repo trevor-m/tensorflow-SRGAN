@@ -142,7 +142,7 @@ def evaluate_model(loss_function, get_batch, sess, num_images, batch_size):
     batch_hr = sess.run(get_batch)
     batch_lr = downsample_batch(batch_hr, factor=4)
     batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
-    loss += sess.run(loss_function, feed_dict={'training:0': False, 'input_lowres:0': batch_lr, 'input_highres:0':batch_hr})
+    loss += sess.run(loss_function, feed_dict={'g_training:0': False, 'd_training:0': False, 'input_lowres:0': batch_lr, 'input_highres:0':batch_hr})
     total += 1
   loss = loss / total
   return loss
@@ -154,7 +154,7 @@ def test_examples(sess, batch_hr, g_y_pred, epoch, log_path, prefix, num=5):
   batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
 
   # run everything through network
-  output = sess.run(g_y_pred, feed_dict={'training:0': False, 'input_lowres:0': batch_lr})
+  output = sess.run(g_y_pred, feed_dict={'g_training:0': False, 'd_training:0': False, 'input_lowres:0': batch_lr})
   
   # iterate over all 5 examples
   for i in range(output.shape[0]):

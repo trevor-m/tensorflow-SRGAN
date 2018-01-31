@@ -31,9 +31,10 @@ def main():
   args = parser.parse_args()
   
   # Set up models
-  training = tf.placeholder(tf.bool, name='training')
-  discriminator = srgan.SRGanDiscriminator(training=training, image_size=args.image_size_train)
-  generator = srgan.SRGanGenerator(discriminator=discriminator, training=training, learning_rate=args.learning_rate, content_loss=args.content_loss, use_gan=args.use_gan)
+  d_training = tf.placeholder(tf.bool, name='d_training')
+  g_training = tf.placeholder(tf.bool, name='g_training')
+  discriminator = srgan.SRGanDiscriminator(training=g_training, image_size=args.image_size_train)
+  generator = srgan.SRGanGenerator(discriminator=discriminator, training=d_training, learning_rate=args.learning_rate, content_loss=args.content_loss, use_gan=args.use_gan)
   # Generator
   g_x = tf.placeholder(tf.float32, [None, None, None, 3], name='input_lowres')
   g_y = tf.placeholder(tf.float32, [None, None, None, 3], name='input_highres')
@@ -62,10 +63,6 @@ def main():
     log_path = build_log_dir(args, sys.argv)
 
   with tf.Session() as sess:
-    # test
-    #op = sess.graph.get_operations()
-    #[print(m.values()) for m in op if 'generator' in m.name]
-    
     # Build input pipeline
     get_train_batch, get_val_batch, get_eval_batch, val_data, eval_data = build_inputs(args, sess)
     # Initialize
@@ -95,6 +92,7 @@ def main():
     # Train
     while True:
       if iteration % args.log_freq == 0:
+        # Test every log-freq iterations
         if not args.use_gan:
           val_error = evaluate_model(g_loss, get_val_batch, sess, args.num_test, args.batch_size)
           eval_error = evaluate_model(g_loss, get_eval_batch, sess, args.num_test, args.batch_size)
@@ -122,12 +120,12 @@ def main():
         batch_hr = sess.run(get_train_batch)
         batch_lr = downsample_batch(batch_hr, factor=4)
         batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
-        sess.run(d_train_step, feed_dict={training: True, g_x: batch_lr, g_y: batch_hr, d_x_real: batch_hr})
+        sess.run(d_train_step, feed_dict={d_training: True, g_training: False, g_x: batch_lr, g_y: batch_hr, d_x_real: batch_hr})
       # Train generator
       batch_hr = sess.run(get_train_batch)
       batch_lr = downsample_batch(batch_hr, factor=4)
       batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
-      sess.run(g_train_step, feed_dict={training: True, g_x: batch_lr, g_y: batch_hr})
+      sess.run(g_train_step, feed_dict={d_training: False, g_training: True, g_x: batch_lr, g_y: batch_hr})
 
       iteration += 1
 

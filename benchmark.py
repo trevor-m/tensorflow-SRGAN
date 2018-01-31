@@ -87,7 +87,7 @@ class Benchmark:
       psnr, ssim, _, _ = self.test_images(self.images_hr, model_output)
       print('Validate %-6s for %-14s: PSNR: %.2f, SSIM: %.4f' % (self.name, model, psnr, ssim))
 
-  def evaluate(self, sess, g_y_pred):
+  def evaluate(self, sess, g_y_pred, save_images=False):
     """Evaluate benchmark, returning the score and saving images."""
     pred = []
     for i, lr in enumerate(self.images_lr):
