@@ -96,18 +96,18 @@ class Benchmark:
     count = 0
     for output, lr, hr, name in zip(images, self.images_lr, self.images_hr, self.names):
       # Save output
-      path = os.path.join(log_path, self.name, '%s_%d' % (name, iteration), '%d_out.png' % epoch)
+      path = os.path.join(log_path, self.name, name, '%d_out.png' % iteration)
       self.save_image(output, path)
       # Save ground truth
-      path = os.path.join(log_path, self.name, '%s_%d' % (name, iteration), '%d_hr.png' % epoch)
+      path = os.path.join(log_path, self.name, name, '%d_hr.png' % iteration)
       self.save_image(hr, path)
       # Save low res
-      path = os.path.join(log_path, self.name, '%s_%d' % (name, iteration), '%d_lr.png' % epoch)
+      path = os.path.join(log_path, self.name, name, '%d_lr.png' % iteration)
       self.save_image(lr, path)
 
       # Hack so that we only do first 14 images in BSD100 instead of the whole thing
       count += 1
-      if count > 14:
+      if count >= 14:
         break
 
   def evaluate(self, sess, g_y_pred, log_path=None, iteration=0):
