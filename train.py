@@ -117,15 +117,16 @@ def main():
         # Save checkpoint
         saver.save(sess, os.path.join(log_path, 'weights'), global_step=iteration, write_meta_graph=False)
 
-      # Get data
+      # Train discriminator
+      if args.use_gan:
+        batch_hr = sess.run(get_train_batch)
+        batch_lr = downsample_batch(batch_hr, factor=4)
+        batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
+        sess.run(d_train_step, feed_dict={training: True, g_x: batch_lr, g_y: batch_hr, d_x_real: batch_hr})
+      # Train generator
       batch_hr = sess.run(get_train_batch)
       batch_lr = downsample_batch(batch_hr, factor=4)
       batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
-
-      # Train discriminator
-      if args.use_gan:
-        sess.run(d_train_step, feed_dict={training: True, g_x: batch_lr, g_y: batch_hr, d_x_real: batch_hr})
-      # Train generator
       sess.run(g_train_step, feed_dict={training: True, g_x: batch_lr, g_y: batch_hr})
 
       iteration += 1

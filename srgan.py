@@ -93,7 +93,7 @@ class SRGanGenerator:
       return tf.identity(0.006*tf.reduce_mean(tf.square(vgg_y - vgg_y_pred)), name-'content_loss')
 
   def _adversarial_loss(self, y_pred):
-    """GAN"""
+    """For GAN: We want to minimize log(1-D(G(x)), however it is formulated as -log(D(G(x)) for better gradients."""
     y_discrim = self.discriminator.forward(y_pred)
     return tf.reduce_mean(-tf.log(y_discrim), name='adversarial_loss')
 
@@ -163,9 +163,9 @@ class SRGanDiscriminator:
       return x
 
   def loss_function(self, y_real_pred, y_fake_pred):
+    """Discriminator wants to maximize log(y_real) + log(1-y_fake), TF doesn't support maximize so we minimize the negative"""
     loss_real = tf.log(y_real_pred)
     loss_fake = tf.log(1-y_fake_pred)
-    # TODO: alpha
     return tf.reduce_mean(-(loss_real + loss_fake))
 
   def optimize(self, loss):
