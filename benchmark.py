@@ -88,8 +88,8 @@ class Benchmark:
       print('Validate %-6s for %-14s: PSNR: %.2f, SSIM: %.4f' % (self.name, model, psnr, ssim))
 
   def save_image(self, image, path):
-    if not os.path.exists(path):
-      os.makedirs(path)
+    if not os.path.exists(os.path.split(path)[0]):
+      os.makedirs(os.path.split(path)[0])
     misc.toimage(image, cmin=0, cmax=255).save(path)
 
   def save_images(self, images, log_path, iteration):
