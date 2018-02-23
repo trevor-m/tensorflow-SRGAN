@@ -6,7 +6,7 @@ from skimage.measure import compare_ssim
 from skimage.color import rgb2ycbcr,rgb2yuv
 
 from skimage.measure import compare_psnr
-from utilities import preprocess
+from utilities import preprocess, downsample
 
 class Benchmark:
   """A collection of images to test a model on."""
@@ -14,8 +14,11 @@ class Benchmark:
   def __init__(self, path, name):
     self.path = path
     self.name = name
-    self.images_lr, self.names = self.load_images_by_model(model='LR')
-    self.images_hr, _ = self.load_images_by_model(model='HR')
+    #self.images_lr, self.names = self.load_images_by_model(model='LR')
+    self.images_hr, self.names = self.load_images_by_model(model='HR')
+    self.images_lr = []
+    for img in self.images_hr:
+      self.images_lr.append(downsample(img, 4))
     
   def load_images_by_model(self, model, file_format='png'):
     """Loads all images that match '*_{model}.{file_format}' and returns sorted list of filenames and names"""

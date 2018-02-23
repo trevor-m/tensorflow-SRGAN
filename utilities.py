@@ -25,7 +25,7 @@ def process_individual_image(filename_queue, img_size, random_crop=False):
     # for testing or when dealing with encodings, always take a center crop of the image
     image = tf.image.resize_image_with_crop_or_pad(image, img_size, img_size)
     image.set_shape((img_size, img_size, 3))
-  image = (tf.cast(image, dtype=tf.float32) / tf.constant(255.0))# * 2.0 - 1.0
+  #image = (tf.cast(image, dtype=tf.float32) / tf.constant(255.0))# * 2.0 - 1.0
   return image
 
 def create_tensor_from_files(files, sess, img_size):
@@ -76,10 +76,11 @@ def build_inputs(args, sess):
 
 def downsample(image, factor):
   """Downsampling function which matches photoshop"""
-  sigma = (factor - 1.0) / 2
-  image = skimage.filters.gaussian(image, sigma, multichannel=True, preserve_range=True)
-  return skimage.transform.resize(image, (image.shape[0]//factor, image.shape[1]//factor, 3), order=1, preserve_range=True, mode='constant')
-
+  #sigma = (factor - 1.0) / 2
+  #image = skimage.filters.gaussian(image, sigma, multichannel=True, preserve_range=True)
+  #return skimage.transform.resize(image, (image.shape[0]//factor, image.shape[1]//factor, 3), order=1, preserve_range=True, mode='constant')
+  return scipy.misc.imresize(image, 1.0/factor, interp='bicubic')
+  
 def downsample_batch(batch, factor):
   downsampled = np.zeros((batch.shape[0], batch.shape[1]//factor, batch.shape[2]//factor, 3))
   for i in range(batch.shape[0]):
@@ -122,8 +123,8 @@ def build_log_dir(args, arguments):
 
 def preprocess(lr, hr):
   """Preprocess lr and hr batch"""
-  #lr = lr
-  hr = hr * 2.0 - 1.0
+  lr = lr / 255.0
+  hr = (hr / 255.0) * 2.0 - 1.0
   return lr, hr
 
 def save_image(path, data, highres=False):
