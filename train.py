@@ -27,7 +27,9 @@ def main():
   parser.add_argument('--image-size-test', type=int, default=96, help='Dimensions of testing images.')
   parser.add_argument('--vgg-weights', type=str, default='vgg_19.ckpt', help='File containing VGG19 weights (tf.slim)')
   parser.add_argument('--validate-benchmarks', action='store_true', help='If set, validates that the benchmarking metrics are correct for the images provided by the authors of the SRGAN paper.')
+  parser.add_argument('--gpu', type=str, default='2', help='Which GPU to use')
   args = parser.parse_args()
+  os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
   
   # Set up models
   d_training = tf.placeholder(tf.bool, name='d_training')

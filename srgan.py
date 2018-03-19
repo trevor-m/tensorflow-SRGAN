@@ -166,7 +166,7 @@ class SRGanDiscriminator:
     #loss_real = tf.losses.sigmoid_cross_entropy(tf.ones_like(y_real_pred_logits), y_real_pred_logits, label_smoothing=0.25)
     #loss_fake = tf.losses.sigmoid_cross_entropy(tf.zeros_like(y_fake_pred_logits), y_fake_pred_logits)
     #return tf.reduce_mean(loss_real + loss_fake)
-    return -tf.reduce_mean(tf.log(y_real_pred) + tf.log(1-y_fake_red))
+    return -tf.reduce_mean(tf.log(y_real_pred) + tf.log(1-y_fake_pred))
 
   def optimize(self, loss):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')
