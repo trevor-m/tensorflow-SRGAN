@@ -14,6 +14,7 @@ def process_individual_image(filename_queue, img_size, random_crop=False):
   """Individual loading & processing for each image"""
   image_file = tf.read_file(filename_queue)
   image = tf.image.decode_image(image_file, 3)
+  #image = tf.image.decode_jpeg(image_file, 3, try_recover_truncated=True, acceptable_fraction=0.0)
   if random_crop:
     # for training, take a random crop of the image
     image_shape = tf.shape(image)
@@ -59,20 +60,20 @@ def build_inputs(args, sess):
     with open('train.pickle', 'rb') as fo:
       train_filenames = np.array(pickle.load(fo))
     with open('val.pickle', 'rb') as fo:
-      val_filenames = np.array(pickle.load(fo))[:args.num_test]
+      val_filenames = np.array(pickle.load(fo))[:119]
     with open('eval_indexes.pickle', 'rb') as fo:
       eval_indexes = np.array(pickle.load(fo))
-    eval_filenames = train_filenames[eval_indexes[:args.num_test]]
+    eval_filenames = train_filenames[eval_indexes[:119]]
   
   # Load first 5 val and eval files into memory (for test images)
-  val_data = create_tensor_from_files(val_filenames[:5], sess, img_size=args.image_size_test)
-  eval_data = create_tensor_from_files(eval_filenames[:5], sess, img_size=args.image_size_test)
+  #val_data = create_tensor_from_files(val_filenames[:5], sess, img_size=args.image_size_test)
+  #eval_data = create_tensor_from_files(eval_filenames[:5], sess, img_size=args.image_size_test)
 
   # Create input pipelines
   get_train_batch = build_input_pipeline(train_filenames, batch_size=args.batch_size, img_size=args.image_size_train, random_crop=True)
   get_val_batch = build_input_pipeline(val_filenames, batch_size=args.batch_size, img_size=args.image_size_train)
   get_eval_batch = build_input_pipeline(eval_filenames, batch_size=args.batch_size, img_size=args.image_size_train)
-  return get_train_batch, get_val_batch, get_eval_batch, val_data, eval_data
+  return get_train_batch, get_val_batch, get_eval_batch#, val_data, eval_data
 
 def downsample(image, factor):
   """Downsampling function which matches photoshop"""
