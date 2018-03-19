@@ -14,7 +14,7 @@ class SRGanGenerator:
     self.discriminator = discriminator
     self.training = training
     self.reuse_vgg = False
-    if content_loss not in ['mse', 'vgg22', 'vgg54']:
+    if content_loss not in ['mse', 'L1', 'vgg22', 'vgg54']:
       print('Invalid content loss function. Must be \'mse\', \'vgg22\', or \'vgg54\'.')
       exit()
     self.content_loss = content_loss
@@ -76,36 +76,34 @@ class SRGanGenerator:
   def _content_loss(self, y, y_pred):
     """MSE, VGG22, or VGG54"""
     if self.content_loss == 'mse':
-      return tf.reduce_mean(tf.square(y - y_pred), name='content_loss')
-      
+      return tf.reduce_mean(tf.square(y - y_pred))
+    if self.content_loss == 'L1':
+      return tf.reduce_mean(tf.abs(y - y_pred))
     if self.content_loss == 'vgg22':
       with tf.name_scope('vgg19_1') as scope:
         vgg_y = self.vgg_forward(y, 'vgg_19/conv2/conv2_2', scope)
       with tf.name_scope('vgg19_2') as scope:
         vgg_y_pred = self.vgg_forward(y_pred, 'vgg_19/conv2/conv2_2', scope)
-      return tf.add(0.006*tf.reduce_mean(tf.square(vgg_y - vgg_y_pred)), 2e-8*tf.reduce_sum(tf.image.total_variation(y_pred)), name='content_loss')
+      return 0.006*tf.reduce_mean(tf.square(vgg_y - vgg_y_pred)) + 2e-8*tf.reduce_sum(tf.image.total_variation(y_pred))
       
     if self.content_loss == 'vgg54':
       with tf.name_scope('vgg19_1') as scope:
         vgg_y = self.vgg_forward(y, 'vgg_19/conv5/conv5_4', scope)
       with tf.name_scope('vgg19_2') as scope:
         vgg_y_pred = self.vgg_forward(y_pred, 'vgg_19/conv5/conv5_4', scope)
-      return tf.identity(0.006*tf.reduce_mean(tf.square(vgg_y - vgg_y_pred)), name-'content_loss')
+      return 0.006*tf.reduce_mean(tf.square(vgg_y - vgg_y_pred))
 
   def _adversarial_loss(self, y_pred):
-    """For GAN: We want to minimize log(1-D(G(x)), however it is formulated as -log(D(G(x)) for better gradients."""
-    y_discrim, y_discrim_logits = self.discriminator.forward(y_pred)
-    return tf.losses.sigmoid_cross_entropy(tf.ones_like(y_discrim_logits), y_discrim_logits)
-    #return tf.reduce_mean(-tf.log(y_discrim), name='adversarial_loss')
-
-  def _perceptual_loss(self, y, y_pred):
-    """Weighted sum of content and adversarial loss"""
-    return tf.add(self._content_loss(y, y_pred), 1e-3*self._adversarial_loss(y_pred), name='loss')
+    """For GAN."""
+    y_discrim = self.discriminator.forward(y_pred)
+    return -tf.reduce_mean(tf.log(y_discrim))
 
   def loss_function(self, y, y_pred):
     """Loss function"""
     if self.use_gan:
-      return self._perceptual_loss(y, y_pred)
+      # Weighted sum of content loss and adversarial loss
+      return self._content_loss(y, y_pred) + 1e-3*self._adversarial_loss(y_pred)
+    # Content loss only
     return self._content_loss(y, y_pred)
   
   def optimize(self, loss):
@@ -159,21 +157,16 @@ class SRGanDiscriminator:
       x = tf.contrib.layers.flatten(x)
       x = tf.layers.dense(x, 1024)
       x = tf.contrib.keras.layers.LeakyReLU(alpha=0.2)(x)
-      logits = tf.layers.dense(x, 1)
-      x = tf.sigmoid(logits, name='forward')
-      return x, logits
+      x = tf.layers.dense(x, 1)
+      x = tf.sigmoid(x)
+      return x
 
-  def loss_function(self, y_real_pred_logits, y_fake_pred_logits):
-    """Discriminator wants to maximize log(y_real) + log(1-y_fake), TF doesn't support maximize so we minimize the negative.
-    We use the modified_discriminator_loss suggested by TFGAN
-    https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/gan/python/losses/python/losses_impl.py
-    Also uses label smoothing for positive labels (https://arxiv.org/abs/1606.03498)
-    """
-    #loss_real = tf.reduce_mean(tf.log(y_real_pred))
-    #loss_fake = tf.log(1-y_fake_pred)
-    loss_real = tf.losses.sigmoid_cross_entropy(tf.ones_like(y_real_pred_logits), y_real_pred_logits, label_smoothing=0.25)
-    loss_fake = tf.losses.sigmoid_cross_entropy(tf.zeros_like(y_fake_pred_logits), y_fake_pred_logits)
-    return tf.reduce_mean(loss_real + loss_fake)
+  def loss_function(self, y_real_pred, y_fake_pred):
+    """Discriminator wants to maximize log(y_real) + log(1-y_fake), TF doesn't support maximize so we minimize the negative."""
+    #loss_real = tf.losses.sigmoid_cross_entropy(tf.ones_like(y_real_pred_logits), y_real_pred_logits, label_smoothing=0.25)
+    #loss_fake = tf.losses.sigmoid_cross_entropy(tf.zeros_like(y_fake_pred_logits), y_fake_pred_logits)
+    #return tf.reduce_mean(loss_real + loss_fake)
+    return -tf.reduce_mean(tf.log(y_real_pred) + tf.log(1-y_fake_red))
 
   def optimize(self, loss):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')

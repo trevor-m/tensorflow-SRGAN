@@ -19,13 +19,12 @@ def main():
   parser.add_argument('--name', type=str, help='Name of experiment.')
   parser.add_argument('--overfit', action='store_true', help='Overfit to a single image.')
   parser.add_argument('--batch-size', type=int, default=16, help='Mini-batch size.')
-  parser.add_argument('--log-freq', type=int, default=1000, help='How many training iterations between testing/checkpoints.')
+  parser.add_argument('--log-freq', type=int, default=10000, help='How many training iterations between testing/checkpoints.')
   parser.add_argument('--learning-rate', type=float, default=1e-4, help='Learning rate for Adam.')
-  parser.add_argument('--content-loss', type=str, default='mse', choices=['mse', 'vgg22', 'vgg54'], help='Metric to use for content loss.')
+  parser.add_argument('--content-loss', type=str, default='mse', choices=['mse', 'L1', 'vgg22', 'vgg54'], help='Metric to use for content loss.')
   parser.add_argument('--use-gan', action='store_true', help='Add adversarial loss term to generator and trains discriminator.')
   parser.add_argument('--image-size-train', type=int, default=96, help='Dimensions of training images.')
-  parser.add_argument('--image-size-test', type=int, default=512, help='Dimensions of testing images.')
-  parser.add_argument('--num-test', type=int, default=1000, help='Number of images to test on.')
+  parser.add_argument('--image-size-test', type=int, default=96, help='Dimensions of testing images.')
   parser.add_argument('--vgg-weights', type=str, default='vgg_19.ckpt', help='File containing VGG19 weights (tf.slim)')
   parser.add_argument('--validate-benchmarks', action='store_true', help='If set, validates that the benchmarking metrics are correct for the images provided by the authors of the SRGAN paper.')
   args = parser.parse_args()
@@ -43,9 +42,9 @@ def main():
   g_train_step = generator.optimize(g_loss)
   # Discriminator
   d_x_real = tf.placeholder(tf.float32, [None, None, None, 3], name='input_real')
-  d_y_real_pred, d_y_real_pred_logits = discriminator.forward(d_x_real)
-  d_y_fake_pred, d_y_fake_pred_logits = discriminator.forward(g_y_pred)
-  d_loss = discriminator.loss_function(d_y_real_pred_logits, d_y_fake_pred_logits)
+  d_y_real_pred = discriminator.forward(d_x_real)
+  d_y_fake_pred = discriminator.forward(g_y_pred)
+  d_loss = discriminator.loss_function(d_y_real_pred, d_y_fake_pred)
   d_train_step = discriminator.optimize(d_loss)
   
   # Set up benchmarks
@@ -64,7 +63,7 @@ def main():
 
   with tf.Session() as sess:
     # Build input pipeline
-    get_train_batch, get_val_batch, get_eval_batch, val_data, eval_data = build_inputs(args, sess)
+    get_train_batch, get_val_batch, get_eval_batch = build_inputs(args, sess)
     # Initialize
     sess.run(tf.local_variables_initializer())
     sess.run(tf.global_variables_initializer())
@@ -93,8 +92,8 @@ def main():
     while True:
       if iteration % args.log_freq == 0:
         # Test every log-freq iterations
-        val_error = evaluate_model(g_loss, get_val_batch, sess, args.num_test, args.batch_size)
-        eval_error = evaluate_model(g_loss, get_eval_batch, sess, args.num_test, args.batch_size)
+        val_error = evaluate_model(g_loss, get_val_batch, sess, 119, args.batch_size)
+        eval_error = evaluate_model(g_loss, get_eval_batch, sess, 119, args.batch_size)
         #test_examples(sess, val_data, g_y_pred, iteration, log_path, 'val')
         #test_examples(sess, eval_data, g_y_pred, iteration, log_path, 'eval')
         # Log error
