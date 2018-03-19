@@ -51,9 +51,10 @@ class Benchmark:
   def PSNR(self, gt, pred):
     #gt = gt.astype(np.float64)
     #pred = pred.astype(np.float64)
-    mse = np.mean((pred - gt)**2)
-    psnr = 10*np.log10(255*255/mse)
-    return psnr
+    #mse = np.mean((pred - gt)**2)
+    #psnr = 10*np.log10(255*255/mse)
+    #return psnr
+    return compare_psnr(gt, pred, data_range=255)
     
   def SSIM(self, gt, pred):
     ssim = compare_ssim(gt, pred, data_range=255, gaussian_weights=True)
