@@ -41,7 +41,7 @@ class SRGanGenerator:
     """Builds the forward pass network graph"""
     with tf.variable_scope('generator') as scope:
       x = tf.layers.conv2d(x, kernel_size=9, filters=64, strides=1, padding='same')
-      tf.contrib.keras.layers.PReLU(shared_axes=[1,2])(x)
+      x = tf.contrib.keras.layers.PReLU(shared_axes=[1,2])(x)
       skip = x
 
       # B x ResidualBlocks
