@@ -44,9 +44,9 @@ def main():
   g_train_step = generator.optimize(g_loss)
   # Discriminator
   d_x_real = tf.placeholder(tf.float32, [None, None, None, 3], name='input_real')
-  d_y_real_pred = discriminator.forward(d_x_real)
-  d_y_fake_pred = discriminator.forward(g_y_pred)
-  d_loss = discriminator.loss_function(d_y_real_pred, d_y_fake_pred)
+  d_y_real_pred, d_y_real_pred_logits = discriminator.forward(d_x_real)
+  d_y_fake_pred, d_y_fake_pred_logits = discriminator.forward(g_y_pred)
+  d_loss = discriminator.loss_function(d_y_real_pred, d_y_fake_pred, d_y_real_pred_logits, d_y_fake_pred_logits)
   d_train_step = discriminator.optimize(d_loss)
   
   # Set up benchmarks
@@ -96,8 +96,6 @@ def main():
         # Test every log-freq iterations
         val_error = evaluate_model(g_loss, get_val_batch, sess, 119, args.batch_size)
         eval_error = evaluate_model(g_loss, get_eval_batch, sess, 119, args.batch_size)
-        #test_examples(sess, val_data, g_y_pred, iteration, log_path, 'val')
-        #test_examples(sess, eval_data, g_y_pred, iteration, log_path, 'eval')
         # Log error
         print('[%d] Test: %.7f, Train: %.7f' % (iteration, val_error, eval_error), end='')
         # Evaluate benchmarks
@@ -118,12 +116,12 @@ def main():
         batch_hr = sess.run(get_train_batch)
         batch_lr = downsample_batch(batch_hr, factor=4)
         batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
-        sess.run(d_train_step, feed_dict={d_training: True, g_training: False, g_x: batch_lr, g_y: batch_hr, d_x_real: batch_hr})
+        sess.run(d_train_step, feed_dict={d_training: True, g_training: True, g_x: batch_lr, g_y: batch_hr, d_x_real: batch_hr})
       # Train generator
       batch_hr = sess.run(get_train_batch)
       batch_lr = downsample_batch(batch_hr, factor=4)
       batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
-      sess.run(g_train_step, feed_dict={d_training: False, g_training: True, g_x: batch_lr, g_y: batch_hr})
+      sess.run(g_train_step, feed_dict={d_training: True, g_training: True, g_x: batch_lr, g_y: batch_hr})
 
       iteration += 1
 

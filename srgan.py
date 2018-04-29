@@ -95,8 +95,8 @@ class SRGanGenerator:
 
   def _adversarial_loss(self, y_pred):
     """For GAN."""
-    y_discrim = self.discriminator.forward(y_pred)
-    return -tf.reduce_mean(tf.log(y_discrim))
+    y_discrim, y_discrim_logits = self.discriminator.forward(y_pred)
+    return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=y_discrim_logits, labels=tf.ones_like(y_discrim_logits)))
 
   def loss_function(self, y, y_pred):
     """Loss function"""
@@ -157,16 +157,15 @@ class SRGanDiscriminator:
       x = tf.contrib.layers.flatten(x)
       x = tf.layers.dense(x, 1024)
       x = tf.contrib.keras.layers.LeakyReLU(alpha=0.2)(x)
-      x = tf.layers.dense(x, 1)
-      x = tf.sigmoid(x)
-      return x
+      logits = tf.layers.dense(x, 1)
+      x = tf.sigmoid(logits)
+      return x, logits
 
-  def loss_function(self, y_real_pred, y_fake_pred):
-    """Discriminator wants to maximize log(y_real) + log(1-y_fake), TF doesn't support maximize so we minimize the negative."""
-    #loss_real = tf.losses.sigmoid_cross_entropy(tf.ones_like(y_real_pred_logits), y_real_pred_logits, label_smoothing=0.25)
-    #loss_fake = tf.losses.sigmoid_cross_entropy(tf.zeros_like(y_fake_pred_logits), y_fake_pred_logits)
-    #return tf.reduce_mean(loss_real + loss_fake)
-    return -tf.reduce_mean(tf.log(y_real_pred) + tf.log(1-y_fake_pred))
+  def loss_function(self, y_real_pred, y_fake_pred, y_real_pred_logits, y_fake_pred_logits):
+    """Discriminator wants to maximize log(y_real) + log(1-y_fake)."""
+    loss_real = tf.reduce_mean(tf.losses.sigmoid_cross_entropy(tf.ones_like(y_real_pred_logits), y_real_pred_logits))
+    loss_fake = tf.reduce_mean(tf.losses.sigmoid_cross_entropy(tf.zeros_like(y_fake_pred_logits), y_fake_pred_logits))
+    return loss_real + loss_fake
 
   def optimize(self, loss):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope='discriminator')
