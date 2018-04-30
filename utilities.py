@@ -9,12 +9,12 @@ import shutil
 import math
 from scipy import misc
 import scipy.ndimage
+import glob
 
 def process_individual_image(filename_queue, img_size, random_crop=False):
   """Individual loading & processing for each image"""
   image_file = tf.read_file(filename_queue)
   image = tf.image.decode_image(image_file, 3)
-  #image = tf.image.decode_jpeg(image_file, 3, try_recover_truncated=True, acceptable_fraction=0.0)
   if random_crop:
     # for training, take a random crop of the image
     image_shape = tf.shape(image)
@@ -23,19 +23,10 @@ def process_individual_image(filename_queue, img_size, random_crop=False):
     image = tf.random_crop(image, size=[img_size, img_size, 3])
     image.set_shape((img_size, img_size, 3))
   else:
-    # for testing or when dealing with encodings, always take a center crop of the image
+    # for testing, always take a center crop of the image
     image = tf.image.resize_image_with_crop_or_pad(image, img_size, img_size)
     image.set_shape((img_size, img_size, 3))
-  #image = (tf.cast(image, dtype=tf.float32) / tf.constant(255.0))# * 2.0 - 1.0
   return image
-
-def create_tensor_from_files(files, sess, img_size):
-  """Given a list of image files, returns a np.array ready to be used as a test batch"""
-  # load images
-  images = np.zeros((len(files), img_size, img_size, 3))
-  for i, image_file in enumerate(files):
-    images[i,:,:,:] = sess.run(process_individual_image(tf.constant(files[i]), img_size, random_crop=False))
-  return images
 
 def build_input_pipeline(filenames, batch_size, img_size, random_crop=False, shuffle=True, num_threads=1):
   """Builds a tensor which provides randomly sampled pictures from the list of filenames provided"""
@@ -57,29 +48,19 @@ def build_inputs(args, sess):
     args.num_test = 1
   else:
     # Regular dataset
-    with open('train.pickle', 'rb') as fo:
-      train_filenames = np.array(pickle.load(fo))
-    with open('val.pickle', 'rb') as fo:
-      val_filenames = np.array(pickle.load(fo))[:119]
-    with open('eval_indexes.pickle', 'rb') as fo:
-      eval_indexes = np.array(pickle.load(fo))
-    eval_filenames = train_filenames[eval_indexes[:119]]
+    train_filenames = np.array(glob.glob(os.path.join(args.train_dir, '**', '*.*'), recursive=True))
+    val_filenames = np.array(glob.glob(os.path.join('Benchmarks', '**', '*_HR.png'), recursive=True))
+    eval_indices = np.random.randint(len(train_filenames), size=len(val_filenames))
+    eval_filenames = train_filenames[eval_indices[:119]]
   
-  # Load first 5 val and eval files into memory (for test images)
-  #val_data = create_tensor_from_files(val_filenames[:5], sess, img_size=args.image_size_test)
-  #eval_data = create_tensor_from_files(eval_filenames[:5], sess, img_size=args.image_size_test)
-
   # Create input pipelines
   get_train_batch = build_input_pipeline(train_filenames, batch_size=args.batch_size, img_size=args.image_size_train, random_crop=True)
   get_val_batch = build_input_pipeline(val_filenames, batch_size=args.batch_size, img_size=args.image_size_train)
   get_eval_batch = build_input_pipeline(eval_filenames, batch_size=args.batch_size, img_size=args.image_size_train)
-  return get_train_batch, get_val_batch, get_eval_batch#, val_data, eval_data
+  return get_train_batch, get_val_batch, get_eval_batch
 
 def downsample(image, factor):
   """Downsampling function which matches photoshop"""
-  #sigma = (factor - 1.0) / 2
-  #image = skimage.filters.gaussian(image, sigma, multichannel=True, preserve_range=True)
-  #return skimage.transform.resize(image, (image.shape[0]//factor, image.shape[1]//factor, 3), order=1, preserve_range=True, mode='constant')
   return scipy.misc.imresize(image, 1.0/factor, interp='bicubic')
   
 def downsample_batch(batch, factor):
@@ -108,18 +89,6 @@ def build_log_dir(args, arguments):
   # Write command line arguments to file
   with open(log_path + '/args.txt', 'w+') as f:
     f.write(' '.join(arguments))
-  # Make directory for each visual example
-  """num = 5
-  if args.overfit:
-    num = 1
-  for i in range(num):
-    full_path = os.path.join(log_path,'eval_'+str(i))
-    if not os.path.exists(full_path):
-      os.makedirs(full_path)
-    full_path = os.path.join(log_path, 'val_'+str(i))
-    if not os.path.exists(full_path):
-      os.makedirs(full_path)
-  """
   return log_path
 
 def preprocess(lr, hr):
@@ -148,23 +117,3 @@ def evaluate_model(loss_function, get_batch, sess, num_images, batch_size):
     total += 1
   loss = loss / total
   return loss
-
-def test_examples(sess, batch_hr, g_y_pred, epoch, log_path, prefix, num=5):
-  """Test the first num(5) images and save the outputs"""
-  # make feed dict with downsampled images
-  batch_lr = downsample_batch(batch_hr, factor=4)
-  batch_lr, batch_hr = preprocess(batch_lr, batch_hr)
-
-  # run everything through network
-  output = sess.run(g_y_pred, feed_dict={'g_training:0': False, 'd_training:0': False, 'input_lowres:0': batch_lr})
-  
-  # iterate over all 5 examples
-  for i in range(output.shape[0]):
-    # save full resolution input/output
-    file_name = os.path.join(log_path, '%s_%d' % (prefix, i), '%d_in.png' % epoch)
-    save_image(file_name, batch_hr[i, :, :, :], highres=True)
-    file_name = os.path.join(log_path, '%s_%d' % (prefix, i), '%d_out.png' % epoch)
-    save_image(file_name, output[i, :, :, :], highres=True)
-    # save downsampled
-    file_name = os.path.join(log_path, '%s_%d' % (prefix, i), '%d_down.png' % epoch)
-    save_image(file_name, batch_lr[i, :, :, :])
