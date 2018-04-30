@@ -34,7 +34,7 @@ def main():
   # Set up models
   d_training = tf.placeholder(tf.bool, name='d_training')
   g_training = tf.placeholder(tf.bool, name='g_training')
-  discriminator = srgan.SRGanDiscriminator(training=g_training, image_size=args.image_size_train)
+  discriminator = srgan.SRGanDiscriminator(training=g_training, image_size=args.image_size)
   generator = srgan.SRGanGenerator(discriminator=discriminator, training=d_training, learning_rate=args.learning_rate, content_loss=args.content_loss, use_gan=args.use_gan)
   # Generator
   g_x = tf.placeholder(tf.float32, [None, None, None, 3], name='input_lowres')

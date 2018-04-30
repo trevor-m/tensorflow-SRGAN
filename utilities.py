@@ -54,9 +54,9 @@ def build_inputs(args, sess):
     eval_filenames = train_filenames[eval_indices[:119]]
   
   # Create input pipelines
-  get_train_batch = build_input_pipeline(train_filenames, batch_size=args.batch_size, img_size=args.image_size_train, random_crop=True)
-  get_val_batch = build_input_pipeline(val_filenames, batch_size=args.batch_size, img_size=args.image_size_train)
-  get_eval_batch = build_input_pipeline(eval_filenames, batch_size=args.batch_size, img_size=args.image_size_train)
+  get_train_batch = build_input_pipeline(train_filenames, batch_size=args.batch_size, img_size=args.image_size, random_crop=True)
+  get_val_batch = build_input_pipeline(val_filenames, batch_size=args.batch_size, img_size=args.image_size)
+  get_eval_batch = build_input_pipeline(eval_filenames, batch_size=args.batch_size, img_size=args.image_size)
   return get_train_batch, get_val_batch, get_eval_batch
 
 def downsample(image, factor):
