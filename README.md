@@ -23,17 +23,17 @@ python train.py --name srresnet-vgg22 --content-loss vgg22 --train-dir path/to/d
 
 SRGAN-MSE
 ```
-python train.py --name srgan-mse --use-gan --content-loss mse --train-dir path/to/dataset --load/results/srresnet-mse/weights-1000000
+python train.py --name srgan-mse --use-gan --content-loss mse --train-dir path/to/dataset --load results/srresnet-mse/weights-1000000
 ```
 
 SRGAN-VGG22
 ```
-python train.py --name srgan-vgg22 --use-gan --content-loss vgg22 --train-dir path/to/dataset --load/results/srresnet-mse/weights-1000000
+python train.py --name srgan-vgg22 --use-gan --content-loss vgg22 --train-dir path/to/dataset --load results/srresnet-mse/weights-1000000
 ```
 
 SRGAN-VGG54
 ```
-python train.py --name srgan-vgg54 --use-gan --content-loss vgg54 --train-dir path/to/dataset --load/results/srresnet-mse/weights-1000000
+python train.py --name srgan-vgg54 --use-gan --content-loss vgg54 --train-dir path/to/dataset --load results/srresnet-mse/weights-1000000
 ```
 
 ## Results
